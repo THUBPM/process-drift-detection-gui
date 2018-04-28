@@ -1,0 +1,27 @@
+{
+  "name": "process-drift-detection-gui",
+  "version": "1.0.0",
+  "description": "An application for process drift detection",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "license": "MIT",
+  "repository": "https://github.com/electron/electron-quick-start",
+  "keywords": [
+    "Electron",
+    "process mining",
+    "drfit detection",
+    "concept drift",
+    "process discovery"
+  ],
+  "author": "Zheng Canbin",
+  "devDependencies": {
+    "echarts": "^3.0.0",
+    "electron-forge": "^4.1.5",
+    "jquery": "*",
+    "lazy.js": "^0.5.0",
+    "semantic-ui": "^2.2.13",
+    "vue": "^2.5.2"
+  }
+}

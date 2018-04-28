@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Concept Drift Detection</title>
+</head>
+<link rel="stylesheet" type="text/css" href="lib/semantic-ui/semantic.min.css">
+<style>
+    .ui.label {
+        margin-top: 8px;
+    }
+
+    body {
+        padding: 64px 30px 0px 30px;
+        min-width: 640px;
+    }
+
+    input[type="range"] {
+        width: 100%;
+    }
+
+    .slide-enter-active {
+        transition: all 4s;
+    }
+
+    .slide-leave-active {
+        transition: all 0.5s;
+    }
+
+    .slide-enter,
+    .slide-leave-to {
+        transform: translateY(-30px);
+        opacity: 0;
+    }
+
+    .mask {
+        z-index: 1000;
+        position: absolute;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100%;
+        height: 100%;
+    }
+</style>
+
+<body>
+    <div id="app">
+        <div class="mask" v-show="isLoading"></div>
+        <div class="ui large top fixed menu">
+            <div class="header item">
+                概念漂移检测
+            </div>
+            <div class="right item">
+                <button class="ui primary button" v-bind:class="{ loading: isLoading }" v-on:click="openFile">打开文件</button>
+            </div>
+        </div>
+
+
+        <message ref="message"></message>
+
+        <div v-show="traces.length > 0">
+            <h3 class="ui top attached block header">
+                <i class="info circle icon"></i>
+                <div class="content">
+                    日志信息
+                </div>
+
+            </h3>
+            <div class="ui bottom attached segment">
+                <div class="ui list">
+                    <div class="item">
+                        <i class="square icon"></i>
+                        <div class="content">
+                            <div class="header">路径</div>
+                            <div class="description">
+                                <div class="ui label">
+                                    {{filePath}}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="item">
+                        <i class="square icon"></i>
+                        <div class="content">
+                            <div class="header">轨迹数量</div>
+                            <div class="description">
+                                <div class="ui label">
+                                    {{traces.length}}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="item">
+                        <i class="square icon"></i>
+                        <div class="content">
+                            <div class="header">活动</div>
+                            <div class="description">
+                                <div class="ui label" v-for="(item, index) in activities">
+                                    {{index}}
+                                    <div class="detail">{{item}}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <br>
+        <div v-show="traces.length > 0">
+            <h3 class="ui top attached block header">
+                <i class="rocket icon"></i>
+                <div class="content">
+                    参数设置
+                </div>
+            </h3>
+            <div class="ui bottom attached segment">
+                <div class="ui form">
+                    <!-- <div class="inline fields">
+                        <div class="sixteen wide field">
+                            <label>初始 MRID</label>
+                            <input v-model="parameter.initialMRID" placeholder="First Name" type="text">
+                        </div>
+                    </div> -->
+                    <div class="sixteen wide field">
+                            <label>初始 MRID</label>
+                            <input v-model.number="parameter.initialMRID" placeholder="请输入一个整数" type="number">
+                        </div>
+                    <button class="ui primary button" v-on:click="detect">检测</button>
+                </div>
+            </div>
+        </div>
+        <br>
+
+        <div v-show="matrix.width > 0">
+            <h3 class="ui top attached block header">
+                <i class="area chart icon"></i>
+                <div class="content">
+                    检测结果
+                </div>
+
+            </h3>
+            <div class="ui bottom attached segment">
+                <div>
+
+                </div>
+                <div class="ui grid">
+                    <div class="row">
+                        <div class="column">
+                            <div class="ui info message" v-bind:class="{attached: showDrifts}">
+                                <div class="header">
+                                    日志中存在的漂移
+                                </div>
+                                <p>
+                                    <div class="ui label" v-for="(drift, index) in drifts">
+                                        {{drift}}
+                                    </div>
+                                </p>
+                                <button class="ui primary button" v-on:click="showDrifts=!showDrifts">
+                                    <!-- <i class="caret up icon"></i> -->
+                                    可视化
+                                </button>
+                            </div>
+                            <!-- <transition name="slide"> -->
+                            <div class="ui bottom attached segment" v-show="showDrifts" style="overflow: hidden">
+                                <drift-vis :drifts="drifts" ref="driftVis"></drift-vis>
+                            </div>
+                            <!-- </transition> -->
+
+                        </div>
+                    </div>
+                    <div class="sixteen wide mobile ten wide tablet ten wide computer column">
+                        <drift-chart-view :matrix="matrix" :clusters="clusters" :candidates="candidates"></drift-chart-view>
+                    </div>
+                    <div class="sixteen wide mobile six wide tablet six wide computer column">
+                        <h3 class="ui header">参数调整</h3>
+                        <div class="ui form">
+                            <div class="field">
+                                <label>MRID ({{parameter.initialMRID}}~{{parseInt(traces.length / 2)}}): {{parameter.MRID}}</label>
+                                <input type="range" :min="parameter.initialMRID" :max="parseInt(traces.length / 2)" v-on:change="MRIDChanged" v-model="parameter.MRID">
+                            </div>
+                            <div class="field">
+                            <label>Radius (1~{{parameter.MRID}}): {{parameter.radius}}</label>
+                            <input type="range" :min="1" :max="3000" v-model="parameter.radius" v-on:change="radiusChanged">
+                        </div>
+                            <div class="field">
+                                <label>Minimum cluster size (1~{{matrix.height}}): {{parameter.k}}</label>
+                                <input type="range" :min="1" :max="matrix.height" v-model="parameter.k" v-on:change="kChanged">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        require("./index.js")
+    </script>
+</body>
+
+</html>
